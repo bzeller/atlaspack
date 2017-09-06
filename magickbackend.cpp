@@ -25,7 +25,6 @@
 #include "magickbackend.h"
 
 #include <AtlasPack/Dimension>
-#include <Magick++.h>
 #include <iostream>
 
 MagickBackend::MagickBackend()
@@ -34,9 +33,9 @@ MagickBackend::MagickBackend()
     Magick::InitializeMagick(NULL);
 }
 
-std::shared_ptr<AtlasPack::PaintDevice> MagickBackend::createPaintDevice(const std::string &filename, const AtlasPack::Size &reserveSize) const
+std::shared_ptr<AtlasPack::PaintDevice> MagickBackend::createPaintDevice(const AtlasPack::Size &reserveSize) const
 {
-    return std::shared_ptr<AtlasPack::PaintDevice>();
+    return std::make_shared<MagickPaintDevice>(reserveSize);
 }
 
 AtlasPack::Image MagickBackend::readImageInformation(const std::string &path) const
@@ -55,20 +54,49 @@ AtlasPack::Image MagickBackend::readImageInformation(const std::string &path) co
     }
     catch( Magick::Exception &error_ )
     {
-        std::cout << "Caught exception: " << error_.what() << std::endl;
-        std::cout << "Unable to read file: " << path << std::endl;
+        std::cerr << "Caught exception: " << error_.what() << std::endl;
+        std::cerr << "Unable to read file: " << path << std::endl;
     }
     return AtlasPack::Image();
 }
 
 
 
-MagickPaintDevice::MagickPaintDevice(const std::string &filename, const AtlasPack::Size &reserveSize)
+MagickPaintDevice::MagickPaintDevice(const AtlasPack::Size &reserveSize)
+    : m_painter(new Magick::Image(Magick::Geometry(reserveSize.width, reserveSize.height),"White"))
 {
 
 }
 
+MagickPaintDevice::~MagickPaintDevice()
+{
+    if (m_painter) delete m_painter;
+}
+
 bool MagickPaintDevice::paintImageFromFile(AtlasPack::Pos topleft, std::string filename)
 {
+    try {
+        Magick::Image input;
+        input.read(filename);
+
+        m_painter->composite(input, topleft.x, topleft.y);
+        return true;
+
+    } catch( Magick::Exception &error_ ) {
+        std::cerr << "Caught exception: " << error_.what() << std::endl;
+        std::cerr << "Unable to compose file: " << filename << std::endl;
+    }
+    return false;
+}
+
+bool MagickPaintDevice::exportToFile(std::string filename)
+{
+    try {
+        m_painter->write(filename);
+        return true;
+    } catch( Magick::Exception &error_ ) {
+        std::cerr << "Caught exception: " << error_.what() << std::endl;
+        std::cerr << "Unable to draw file: " << filename << std::endl;
+    }
     return false;
 }

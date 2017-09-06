@@ -25,21 +25,29 @@
 #include <AtlasPack/Backend>
 #include <AtlasPack/PaintDevice>
 
+#include <Magick++.h>
+
 class MagickBackend : public AtlasPack::Backend
 {
     public:
         MagickBackend();
 
         // Backend interface
-        std::shared_ptr<AtlasPack::PaintDevice> createPaintDevice(const std::string &filename, const AtlasPack::Size &reserveSize) const;
+        std::shared_ptr<AtlasPack::PaintDevice> createPaintDevice(const AtlasPack::Size &reserveSize) const;
         AtlasPack::Image readImageInformation(const std::string &path) const;
 };
 
 class MagickPaintDevice : public AtlasPack::PaintDevice
 {
     public:
-        MagickPaintDevice(const std::string &filename, const AtlasPack::Size &reserveSize);
+        MagickPaintDevice(const AtlasPack::Size &reserveSize);
+        ~MagickPaintDevice();
 
         // PaintDevice interface
-        bool paintImageFromFile(AtlasPack::Pos topleft, std::string filename);
+        bool paintImageFromFile(AtlasPack::Pos topleft, std::string filename) override;
+        bool exportToFile (std::string filename) override;
+
+    private:
+        Magick::Image *m_painter = nullptr;
+
 };

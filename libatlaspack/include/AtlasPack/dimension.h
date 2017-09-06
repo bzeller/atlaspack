@@ -29,16 +29,22 @@
 namespace AtlasPack {
 
 struct Size {
+    Size (size_t w = 0, size_t h = 0)
+        : width(w), height(h) {}
     size_t width  = 0;
     size_t height = 0;
 };
 
 struct Pos {
+    Pos (size_t _x = 0, size_t _y = 0)
+        :x(_x), y(_y) {}
     size_t x = 0;
     size_t y = 0;
 };
 
 struct Rect {
+    Rect (Pos pos, Size s)
+        : topLeft(pos), size(s) {}
     Pos  topLeft;
     Size size;
 };

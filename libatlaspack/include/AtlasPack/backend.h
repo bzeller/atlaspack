@@ -35,7 +35,7 @@ namespace AtlasPack {
 
 class Backend {
     public:
-        virtual std::shared_ptr<PaintDevice> createPaintDevice (const std::string &filename, const Size &reserveSize) const = 0;
+        virtual std::shared_ptr<PaintDevice> createPaintDevice (const Size &reserveSize) const = 0;
         virtual Image readImageInformation (const std::string &path) const = 0;
 };
 

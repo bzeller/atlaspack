@@ -32,7 +32,7 @@ namespace AtlasPack {
 class PaintDevice {
 
     public:
-        typedef std::function<PaintDevice *()> Factory;
+        virtual bool exportToFile (std::string filename) = 0;
         virtual bool paintImageFromFile (Pos topleft, std::string filename) = 0;
 
 };
