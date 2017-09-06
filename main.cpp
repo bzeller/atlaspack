@@ -22,20 +22,12 @@
  * SOFTWARE.
  */
 
+#include "magickbackend.h"
+
 #include <iostream>
 #include <boost/program_options.hpp>
 
-
 namespace po = boost::program_options;
-
-//move to library
-struct Dimension {
-    int width  = 0;
-    int height = 0;
-};
-
-int doPack   (const std::string inputDirectory, const std::string basePath, const Dimension &dim, bool recursive = false);
-int doExtract (const std::string filename, const std::string outputFile, const std::string atlasPath);
 
 int main(int argc, char *argv[])
 {
@@ -111,7 +103,17 @@ int main(int argc, char *argv[])
     }
 
     if (vm["mode"].as<std::string>() == "pack") {
-        std::cout << "Do package";
+
+        //initialize the backend, this could be extended to load automatically
+        //from plugins
+        MagickBackend backend;
+
+        AtlasPack::Image img = backend.readImageInformation("agl.png");
+        if (img.isValid()) {
+            std::cout<<"Image "<<img.path()<<" Width: "<<img.width()<<" Height: "<<img.height()<<std::endl;
+        } else {
+            std::cout<<"Could not read image";
+        }
     } else if (vm["mode"].as<std::string>() == "extract") {
         std::cout << "Do extract";
     } else {

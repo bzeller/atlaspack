@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(atlasbuilder)
+project(atlaspack)
 
 # enable C++14 features
 if (CMAKE_VERSION VERSION_LESS "3.1")
@@ -18,6 +18,24 @@ find_package(Boost
   program_options
 )
 
-add_executable(${PROJECT_NAME} "main.cpp")
+# image magick for the backend implementation
+find_package(ImageMagick
+    REQUIRED
+    COMPONENTS Magick++
+)
 
-target_link_libraries(${PROJECT_NAME} Boost::program_options)
+add_subdirectory(libatlaspack)
+
+INCLUDE_DIRECTORIES(libatlaspack/include ${ImageMagick_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
+
+set (HEADERS
+    magickbackend.h
+    )
+
+set (SOURCES
+    magickbackend.cpp
+    main.cpp
+    )
+
+add_executable(${PROJECT_NAME}-cli ${HEADERS} ${SOURCES})
+target_link_libraries(${PROJECT_NAME}-cli Boost::program_options libatlaspack ${ImageMagick_LIBRARIES})
