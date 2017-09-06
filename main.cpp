@@ -26,8 +26,66 @@
 
 #include <iostream>
 #include <boost/program_options.hpp>
+#include <boost/filesystem.hpp>
+
+#include <AtlasPack/TextureAtlas>
 
 namespace po = boost::program_options;
+namespace fs = boost::filesystem;
+
+std::vector<AtlasPack::Image> collectImageFiles (AtlasPack::Backend *backend, const fs::path &readDir, bool recursive = false)
+{
+    std::vector<AtlasPack::Image> result;
+
+    try {
+        if (!fs::exists(readDir)) {
+            //Input directory does not exist.
+            return result;
+        }
+
+        if (!fs::is_directory(readDir)) {
+            //Input path is not a directory.
+            return result;
+        }
+
+        for (fs::directory_entry& entry : fs::directory_iterator(readDir)) {
+            boost::system::error_code err;
+
+            if (fs::is_directory(entry, err)) {
+                if (err.value() != boost::system::errc::success) {
+                    std::cerr << "Error when trying to stat "<<entry.path().string()<<" skipping entry."<<std::endl;
+                    continue;
+                }
+
+                if (recursive) {
+                    std::vector<AtlasPack::Image> subDirItems = collectImageFiles(backend, entry, true);
+                    result.reserve(result.size() + subDirItems.size());
+                    result.insert(result.end(), subDirItems.begin(), subDirItems.end());
+                }
+                continue;
+            }
+
+            if (!fs::is_regular_file(entry, err)) {
+                if (err.value() != boost::system::errc::success) {
+                    std::cerr << "Error when trying to stat "<<entry.path().string()<<" skipping entry."<<std::endl;
+                }
+                continue;
+            }
+
+            AtlasPack::Image img = backend->readImageInformation(entry.path().string());
+            if (!img.isValid()) {
+                std::cerr << "Error when trying to load "<<entry.path().string()<<" skipping file."<<std::endl;
+                continue;
+            }
+            result.push_back(img);
+        }
+
+    } catch (const fs::filesystem_error& ex) {
+      std::cerr << "Error while reading the input directory: "<<ex.what() << std::endl;
+    }
+
+    return result;
+}
 
 int main(int argc, char *argv[])
 {
@@ -104,16 +162,53 @@ int main(int argc, char *argv[])
 
     if (vm["mode"].as<std::string>() == "pack") {
 
+        if (vm.count("input-or-output-file") != 1) {
+            std::cerr << "Input directory was not specified."<<std::endl;
+            showHelp();
+            return 1;
+        }
+
         //initialize the backend, this could be extended to load automatically
         //from plugins
         MagickBackend backend;
 
-        AtlasPack::Image img = backend.readImageInformation("agl.png");
-        if (img.isValid()) {
-            std::cout<<"Image "<<img.path()<<" Width: "<<img.width()<<" Height: "<<img.height()<<std::endl;
-        } else {
-            std::cout<<"Could not read image";
+        std::vector<AtlasPack::Image> images;
+
+        fs::path readDir(vm["input-or-output-file"].as<std::string>());
+        try {
+            if (!fs::exists(readDir)) {
+                std::cerr << "Input directory does not exist."<<std::endl;
+                return 1;
+            }
+
+            if (!fs::is_directory(readDir)) {
+                std::cerr << "Input path is not a directory."<<std::endl;
+                return 1;
+            }
+            images = collectImageFiles(&backend, readDir, vm.count("recursive") > 0);
+
+            for (const AtlasPack::Image &currImg : images) {
+                std::cout<<"Found Image: "<<currImg.path()<<std::endl;
+            }
+        } catch (const fs::filesystem_error& ex) {
+          std::cerr << "Error while reading the input directory: "<<ex.what() << std::endl;
         }
+
+        if (images.size() > 0) {
+            AtlasPack::TextureAtlas atlasbuilder(AtlasPack::Size(4000,4000));
+            std::random_shuffle(images.begin(), images.end());
+            for (const auto &img : images) {
+                if (!atlasbuilder.insertImage(img)) {
+                    std::cerr << "Not enough space to insert image "<<img.path()<<std::endl;
+                    return 1;
+                } else {
+                    std::cout << "Added image "<<img.path()<<std::endl;
+                }
+            }
+
+            atlasbuilder.render(&backend);
+        }
+
     } else if (vm["mode"].as<std::string>() == "extract") {
         std::cout << "Do extract";
     } else {

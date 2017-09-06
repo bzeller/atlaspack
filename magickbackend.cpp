@@ -54,8 +54,7 @@ AtlasPack::Image MagickBackend::readImageInformation(const std::string &path) co
     }
     catch( Magick::Exception &error_ )
     {
-        std::cerr << "Caught exception: " << error_.what() << std::endl;
-        std::cerr << "Unable to read file: " << path << std::endl;
+        std::cerr << "Unable to read file: " << path << " " <<error_.what() << std::endl;
     }
     return AtlasPack::Image();
 }

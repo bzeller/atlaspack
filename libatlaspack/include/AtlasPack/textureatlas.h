@@ -21,34 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef ATLASPACK_DIMENSION_INCLUDED
-#define ATLASPACK_DIMENSION_INCLUDED
 
-#include <stddef.h>
+#include <AtlasPack/Image>
+#include <AtlasPack/Backend>
+#include <AtlasPack/Dimension>
 
 namespace AtlasPack {
 
-struct Size {
-    Size (size_t w = 0, size_t h = 0)
-        : width(w), height(h) {}
-    size_t width  = 0;
-    size_t height = 0;
-};
+class TextureAtlasPrivate;
+class TextureAtlas
+{
+    public:
+        TextureAtlas(Size atlasSize);
+        ~TextureAtlas();
 
-struct Pos {
-    Pos (size_t _x = 0, size_t _y = 0)
-        :x(_x), y(_y) {}
-    size_t x = 0;
-    size_t y = 0;
-};
+        //disable copying of this type
+        TextureAtlas(const TextureAtlas &other) = delete;
+        TextureAtlas &operator=(const TextureAtlas &other) = delete;
 
-struct Rect {
-    Rect (Pos pos = Pos(), Size s = Size())
-        : topLeft(pos), size(s) {}
-    Pos  topLeft;
-    Size size;
+        bool insertImage (const Image &img);
+        bool render(Backend *backend);
+
+    private:
+        TextureAtlasPrivate *p = nullptr;
 };
 
 }
-
-#endif

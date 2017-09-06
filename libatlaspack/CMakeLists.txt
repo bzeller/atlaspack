@@ -9,6 +9,8 @@ set (HEADERS
     include/AtlasPack/PaintDevice
     include/AtlasPack/TextureAtlasPacker
     include/AtlasPack/textureatlaspacker.h
+    include/AtlasPack/TextureAtlas
+    include/AtlasPack/textureatlas.h
     include/AtlasPack/Image
     include/AtlasPack/image.h
     include/AtlasPack/Backend
@@ -17,6 +19,7 @@ set (HEADERS
 
 set (SOURCES
     src/textureatlaspacker.cpp
+    src/textureatlas.cpp
     src/backend.cpp
     src/image.cpp
     )

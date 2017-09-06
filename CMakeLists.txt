@@ -15,7 +15,7 @@ endif ()
 find_package(Boost
   "1.58"
   REQUIRED
-  program_options
+  program_options filesystem system
 )
 
 # image magick for the backend implementation
@@ -38,4 +38,4 @@ set (SOURCES
     )
 
 add_executable(${PROJECT_NAME}-cli ${HEADERS} ${SOURCES})
-target_link_libraries(${PROJECT_NAME}-cli Boost::program_options libatlaspack ${ImageMagick_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}-cli Boost::program_options Boost::filesystem libatlaspack ${ImageMagick_LIBRARIES})
