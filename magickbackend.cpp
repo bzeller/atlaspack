@@ -26,11 +26,18 @@
 
 #include <AtlasPack/Dimension>
 #include <iostream>
+#include <boost/algorithm/string.hpp>
 
 MagickBackend::MagickBackend()
 {
     //has to be called before ANY magick can be used
     Magick::InitializeMagick(NULL);
+}
+
+bool MagickBackend::supportsImageType(const std::string &extension) const
+{
+    std::string ext = boost::algorithm::to_lower_copy(extension);
+    return (ext == ".jpg" || ext == ".png" || ext == ".svg");
 }
 
 std::shared_ptr<AtlasPack::PaintDevice> MagickBackend::createPaintDevice(const AtlasPack::Size &reserveSize) const
@@ -45,16 +52,13 @@ AtlasPack::Image MagickBackend::readImageInformation(const std::string &path) co
         //read just enough of the file to figure out the geometry, right now thats all we need to know
         img.ping( path );
 
-        AtlasPack::Size geom;
-        geom.width = img.columns();
-        geom.height = img.rows();
-
+        AtlasPack::Size geom(img.columns(), img.rows());
         return AtlasPack::Image (path, geom);
 
     }
-    catch( Magick::Exception &error_ )
+    catch( Magick::Exception &error )
     {
-        std::cerr << "Unable to read file: " << path << " " <<error_.what() << std::endl;
+        std::cerr << "Unable to read file: " << path << " " <<error.what() << std::endl;
     }
     return AtlasPack::Image();
 }

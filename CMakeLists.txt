@@ -38,4 +38,4 @@ set (SOURCES
     )
 
 add_executable(${PROJECT_NAME}-cli ${HEADERS} ${SOURCES})
-target_link_libraries(${PROJECT_NAME}-cli Boost::program_options Boost::filesystem libatlaspack ${ImageMagick_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}-cli Boost::program_options Boost::filesystem libatlaspack ${ImageMagick_LIBRARIES} pthread)

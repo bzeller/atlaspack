@@ -35,7 +35,7 @@ struct Node {
     std::shared_ptr<Node> right;
 
     Rect rect;
-    const Image *img = nullptr;
+    Image img;
 };
 
 class TextureAtlasPrivate {
@@ -47,7 +47,11 @@ class TextureAtlasPrivate {
     Node m_root;
 };
 
-//Algorithm based on lightmap packing found on http://blackpawn.com/texts/lightmaps/default.html
+/**
+ * @brief TextureAtlasPrivate::insertImage
+ * Algorithm based on lightmap packing found on http://blackpawn.com/texts/lightmaps/default.html
+ * \returns the Node the Image was inserted into, nullptr if not enough space is available
+ */
 Node *TextureAtlasPrivate::insertImage(const Image &img, Node *node)
 {
     //if we have children, we are not a leaf
@@ -63,7 +67,7 @@ Node *TextureAtlasPrivate::insertImage(const Image &img, Node *node)
         //this path is entered if we found a leaf node
 
         //first check if the space is already filled
-        if (node->img)
+        if (node->img.isValid())
             return nullptr;
 
         Pos  nodePos  = node->rect.topLeft;
@@ -80,7 +84,7 @@ Node *TextureAtlasPrivate::insertImage(const Image &img, Node *node)
         if (nodeSize.height == img.height()
                 && nodeSize.width == img.width()) {
             //perfect fit, store the image
-            node->img = &img;
+            node->img = img;
             return node;
         }
 
@@ -112,9 +116,9 @@ Node *TextureAtlasPrivate::insertImage(const Image &img, Node *node)
 void TextureAtlasPrivate::renderNode(std::shared_ptr<PaintDevice> painter, Node *node)
 {
     bool rendered = false;
-    if(node->img) {
+    if(node->img.isValid()) {
         rendered = true;
-        painter->paintImageFromFile(node->rect.topLeft, node->img->path());
+        painter->paintImageFromFile(node->rect.topLeft, node->img.path());
     }
 
     if(node->left) {
@@ -137,6 +141,11 @@ TextureAtlas::TextureAtlas(Size atlasSize)
 TextureAtlas::~TextureAtlas()
 {
     if (p) delete p;
+}
+
+Size TextureAtlas::size() const
+{
+    return p->m_root.rect.size;
 }
 
 bool TextureAtlas::insertImage(const Image &img)

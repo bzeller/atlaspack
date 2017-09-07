@@ -39,8 +39,11 @@ class TextureAtlas
         TextureAtlas(const TextureAtlas &other) = delete;
         TextureAtlas &operator=(const TextureAtlas &other) = delete;
 
+        Size size () const;
+
         bool insertImage (const Image &img);
         bool render(Backend *backend);
+
 
     private:
         TextureAtlasPrivate *p = nullptr;

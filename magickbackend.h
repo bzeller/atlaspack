@@ -33,6 +33,7 @@ class MagickBackend : public AtlasPack::Backend
         MagickBackend();
 
         // Backend interface
+        virtual bool supportsImageType (const std::string &extension) const;
         std::shared_ptr<AtlasPack::PaintDevice> createPaintDevice(const AtlasPack::Size &reserveSize) const;
         AtlasPack::Image readImageInformation(const std::string &path) const;
 };
