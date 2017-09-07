@@ -21,25 +21,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-#ifndef ATLASPACK_TEXTUREATLASPACKER_INCLUDED
-#define ATLASPACK_TEXTUREATLASPACKER_INCLUDED
 
+#include <AtlasPack/Image>
+#include <AtlasPack/Backend>
 #include <AtlasPack/Dimension>
-#include <AtlasPack/PaintDevice>
-#include <string>
 
 namespace AtlasPack {
 
-class TextureAtlasPacker
+class TextureAtlasPrivate;
+class TextureAtlas
 {
     public:
-        TextureAtlasPacker();
-        int doPack   (const std::string inputDirectory, const std::string basePath, const Size &size, bool recursive = false);
-        int doExtract (const std::string filename, const std::string outputFile, const std::string atlasPath);
+        TextureAtlas(Size atlasSize);
+        ~TextureAtlas();
+
+        //disable copying of this type
+        TextureAtlas(const TextureAtlas &other) = delete;
+        TextureAtlas &operator=(const TextureAtlas &other) = delete;
+
+        Size size () const;
+
+        bool insertImage (const Image &img);
+        bool render(Backend *backend);
+
+
+    private:
+        TextureAtlasPrivate *p = nullptr;
 };
 
-
-
 }
-
-#endif
