@@ -24,6 +24,7 @@
 
 #include "magickbackend.h"
 
+#include <AtlasPack/TextureAtlasPacker>
 #include <AtlasPack/TextureAtlas>
 
 #include <iostream>
@@ -39,7 +40,7 @@ namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
 struct Job {
-    std::future<std::shared_ptr<AtlasPack::TextureAtlas> > future;
+    std::future<std::shared_ptr<AtlasPack::TextureAtlasPacker> > future;
     std::shared_ptr<std::thread> task;
 };
 
@@ -113,7 +114,6 @@ int main(int argc, char *argv[])
     //split the arguments in pack and extract groups so the help is easier to read
     po::options_description descPack("pack");
     descPack.add_options()
-            ("atlasDimensions,a",  po::value<std::string>(), "\"Width x Height\" Force dimensions of the created Atlas.")
             ("atlasBaseName,b",  po::value<std::string>(), "Path and basename where the texture atlas should be placed")
             ("recursive,r", "Search also subdirectories for images");
 
@@ -209,17 +209,17 @@ int main(int argc, char *argv[])
 
             //first find a atlas that fits all, incremement by 1000
             auto packer = [](const AtlasPack::Size &s, const std::vector<AtlasPack::Image> &images) {
-                std::shared_ptr<AtlasPack::TextureAtlas> result = std::make_shared<AtlasPack::TextureAtlas>(s);
+                std::shared_ptr<AtlasPack::TextureAtlasPacker> result = std::make_shared<AtlasPack::TextureAtlasPacker>(s);
                 for (const auto &img : images) {
                     if (!result->insertImage(img)) {
-                        return std::shared_ptr<AtlasPack::TextureAtlas>();
+                        return std::shared_ptr<AtlasPack::TextureAtlasPacker>();
                     }
                 }
                 return result;
             };
 
             auto startJob = [packer] (const size_t &len, const std::vector<AtlasPack::Image> &images){
-                std::packaged_task<std::shared_ptr<AtlasPack::TextureAtlas>(const AtlasPack::Size&, const std::vector<AtlasPack::Image> &)> task(packer);
+                std::packaged_task<std::shared_ptr<AtlasPack::TextureAtlasPacker>(const AtlasPack::Size&, const std::vector<AtlasPack::Image> &)> task(packer);
 
                 Job job;
                 job.future = task.get_future();
@@ -228,25 +228,25 @@ int main(int argc, char *argv[])
             };
 
 
-            int cores = std::thread::hardware_concurrency();
+            unsigned int cores = std::thread::hardware_concurrency();
             if (cores == 0) {
                 //in case the core detection fails use at least 2 threads
                 cores = 2;
             }
 
             size_t lastSize = 1000;
-            int increment = 1000;
+            size_t increment = 1000;
 
             std::cout<<"Using "<<cores<<" cores to calculate Atlas";
 
-            std::shared_ptr<AtlasPack::TextureAtlas> lastPossibleAtlas;
+            std::shared_ptr<AtlasPack::TextureAtlasPacker> lastPossibleAtlas;
 
             while (!lastPossibleAtlas) {
 
                 std::vector<Job> runningJobs;
                 runningJobs.reserve(cores);
 
-                for (int i = 0; i < cores; i++) {
+                for (unsigned int i = 0; i < cores; i++) {
                     runningJobs.push_back(startJob(lastSize + increment, images));
                     lastSize += increment;
                 }
@@ -269,17 +269,17 @@ int main(int argc, char *argv[])
                 std::cout<<"Found a atlas that can contain all: "<<lastPossibleAtlas->size().height<<std::endl;
 
                 bool canGoOn = true;
-                int decrement = 10;
+                size_t decrement = 10;
                 lastSize  = lastPossibleAtlas->size().height;
                 while (canGoOn) {
 
                     std::vector<Job> runningJobs;
                     runningJobs.reserve(cores);
 
-                    for (int i = 0; i < cores; i++) {
+                    for (unsigned int i = 0; i < cores; i++) {
 
                         //make sure we do not overflow
-                        if(std::abs(decrement) > lastSize)
+                        if(decrement > lastSize)
                             break;
 
                         runningJobs.push_back(startJob(lastSize - decrement, images));
@@ -304,7 +304,17 @@ int main(int argc, char *argv[])
                 }
 
                 std::cout<<"Calculated Atlas size: "<<lastPossibleAtlas->size().height<<std::endl;
-                lastPossibleAtlas->render(&backend);
+
+                std::string err;
+                AtlasPack::TextureAtlas atlas = lastPossibleAtlas->compile(vm["atlasBaseName"].as<std::string>(), &backend, &err);
+
+                if(atlas.isValid()) {
+                    std::cout<<"Created a Atlas with "<<atlas.count()<<" Images from List "<<images.size()<<std::endl;
+                    return 0;
+                } else {
+                    std::cout<<"Failed to create Atlas, error was: "<<err<<std::endl;
+                    return 1;
+                }
             }
         }
     } else if (vm["mode"].as<std::string>() == "extract") {

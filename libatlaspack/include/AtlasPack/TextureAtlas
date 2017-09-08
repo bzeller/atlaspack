@@ -22,38 +22,4 @@
  * SOFTWARE.
  */
 
-#ifndef ATLASPACK_TEXTUREATLASPACKER_H_INCLUDED
-#define ATLASPACK_TEXTUREATLASPACKER_H_INCLUDED
-
-#include <AtlasPack/Image>
-#include <AtlasPack/Backend>
-#include <AtlasPack/Dimension>
-#include <AtlasPack/TextureAtlas>
-
-namespace AtlasPack {
-
-class TextureAtlasPackerPrivate;
-class TextureAtlasPacker
-{
-    public:
-        TextureAtlasPacker(Size atlasSize);
-        ~TextureAtlasPacker();
-
-        //disable copying of this type
-        TextureAtlasPacker(const TextureAtlasPacker &other) = delete;
-        TextureAtlasPacker &operator=(const TextureAtlasPacker &other) = delete;
-
-        Size size () const;
-
-        bool insertImage (const Image &img);
-
-        TextureAtlas compile (const std::string &basePath, Backend *backend, std::string *error = nullptr) const;
-
-
-    private:
-        TextureAtlasPackerPrivate *p = nullptr;
-};
-
-}
-
-#endif
+#include "textureatlas.h"

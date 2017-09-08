@@ -21,37 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#ifndef ATLASPACK_TEXTUREATLAS_P_H
+#define ATLASPACK_TEXTUREATLAS_P_H
 
-#ifndef ATLASPACK_TEXTUREATLASPACKER_H_INCLUDED
-#define ATLASPACK_TEXTUREATLASPACKER_H_INCLUDED
-
-#include <AtlasPack/Image>
-#include <AtlasPack/Backend>
-#include <AtlasPack/Dimension>
 #include <AtlasPack/TextureAtlas>
+#include <map>
 
 namespace AtlasPack {
 
-class TextureAtlasPackerPrivate;
-class TextureAtlasPacker
-{
+struct Texture {
+    Texture() = default;
+    Texture(Pos p, Image img)
+        : pos(p), image(img) {}
+    Texture(const Texture &other) = default;
+    Pos pos;
+    Image image;
+};
+
+class TextureAtlasPrivate {
     public:
-        TextureAtlasPacker(Size atlasSize);
-        ~TextureAtlasPacker();
-
-        //disable copying of this type
-        TextureAtlasPacker(const TextureAtlasPacker &other) = delete;
-        TextureAtlasPacker &operator=(const TextureAtlasPacker &other) = delete;
-
-        Size size () const;
-
-        bool insertImage (const Image &img);
-
-        TextureAtlas compile (const std::string &basePath, Backend *backend, std::string *error = nullptr) const;
-
-
-    private:
-        TextureAtlasPackerPrivate *p = nullptr;
+        std::string m_textureDesc;
+        std::map<std::string, Texture> m_textures;
+        Image m_textureAtlas;
+        bool m_valid = true;
 };
 
 }

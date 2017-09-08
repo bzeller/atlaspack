@@ -21,75 +21,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+#ifndef ATLASPACK_TEXTUREATLAS_H
+#define ATLASPACK_TEXTUREATLAS_H
 
 #include <AtlasPack/Image>
+#include <AtlasPack/Backend>
 
-/**
- * @class Image
- * @brief Represents informations about a texture to be painted into the Atlas
- */
+#include <string>
 
 namespace AtlasPack {
 
-    class ImagePrivate {
-        public:
-            ImagePrivate (const std::string &p, const Size s)
-                : path(p)
-                , size(s){}
+class TextureAtlasPrivate;
+class TextureAtlasPacker;
 
-            std::string path;
-            AtlasPack::Size size;
-            bool valid = true;
-    };
+class TextureAtlas
+{
+    public:
+        TextureAtlas();
+        TextureAtlas(const TextureAtlas &other);
+        ~TextureAtlas();
 
+        TextureAtlas &operator=(const TextureAtlas &other);
 
-    Image::Image()
-        : p(new ImagePrivate("", AtlasPack::Size()))
-    {
-        p->valid = false;
-    }
+        bool load(const std::string basePath, std::string *error = nullptr);
+        bool isValid () const;
 
-    Image::Image(const std::string &path, const AtlasPack::Size size)
-        : p(new ImagePrivate(path, size))
-    {
+        bool contains (const std::string &imgName) const;
+        Size textureSize (const std::string &imgName) const;
+        bool loadImage (const std::string &imgName, AtlasPack::PaintDevice *painter, AtlasPack::Pos &targetPos);
 
-    }
+        size_t count () const;
 
-    Image::Image(const Image &other)
-        : p(new ImagePrivate(*other.p))
-    {
-    }
+    friend class TextureAtlasPacker;
 
-    Image::~Image()
-    {
-        if (p) delete p;
-    }
+    private:
+        TextureAtlas(TextureAtlasPrivate *p);
+        TextureAtlasPrivate *p = nullptr;
+};
 
-    Image &Image::operator=(const Image &other)
-    {
-        *p = *other.p;
-        return *this;
-    }
+} // namespace AtlasPack
 
-    size_t Image::width() const
-    {
-        return p->size.width;
-    }
-
-    size_t Image::height() const
-    {
-        return p->size.height;
-    }
-
-    std::string Image::path() const
-    {
-        return p->path;
-    }
-
-    bool Image::isValid() const
-    {
-        return p->valid;
-    }
-
-}
-
+#endif // ATLASPACK_TEXTUREATLAS_H

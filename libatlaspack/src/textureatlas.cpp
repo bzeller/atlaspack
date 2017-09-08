@@ -22,74 +22,63 @@
  * SOFTWARE.
  */
 
-#include <AtlasPack/Image>
-
-/**
- * @class Image
- * @brief Represents informations about a texture to be painted into the Atlas
- */
+#include <AtlasPack/textureatlas_p.h>
 
 namespace AtlasPack {
 
-    class ImagePrivate {
-        public:
-            ImagePrivate (const std::string &p, const Size s)
-                : path(p)
-                , size(s){}
 
-            std::string path;
-            AtlasPack::Size size;
-            bool valid = true;
-    };
-
-
-    Image::Image()
-        : p(new ImagePrivate("", AtlasPack::Size()))
-    {
-        p->valid = false;
-    }
-
-    Image::Image(const std::string &path, const AtlasPack::Size size)
-        : p(new ImagePrivate(path, size))
-    {
-
-    }
-
-    Image::Image(const Image &other)
-        : p(new ImagePrivate(*other.p))
-    {
-    }
-
-    Image::~Image()
-    {
-        if (p) delete p;
-    }
-
-    Image &Image::operator=(const Image &other)
-    {
-        *p = *other.p;
-        return *this;
-    }
-
-    size_t Image::width() const
-    {
-        return p->size.width;
-    }
-
-    size_t Image::height() const
-    {
-        return p->size.height;
-    }
-
-    std::string Image::path() const
-    {
-        return p->path;
-    }
-
-    bool Image::isValid() const
-    {
-        return p->valid;
-    }
+TextureAtlas::TextureAtlas(TextureAtlasPrivate *priv)
+    : p(priv)
+{
 
 }
 
+TextureAtlas::TextureAtlas()
+    : p(new TextureAtlasPrivate())
+{
+    p->m_valid = false;
+}
+
+TextureAtlas::TextureAtlas(const TextureAtlas &other)
+    : p(new TextureAtlasPrivate())
+{
+    *p = *other.p;
+}
+
+TextureAtlas::~TextureAtlas()
+{
+    if(p) delete p;
+}
+
+TextureAtlas &TextureAtlas::operator=(const TextureAtlas &other)
+{
+    *p = *other.p;
+    return *this;
+}
+
+bool TextureAtlas::load(const std::string basePath, std::string *error)
+{
+    return false;
+}
+
+bool TextureAtlas::isValid() const
+{
+    return p->m_valid;
+}
+
+bool TextureAtlas::contains(const std::string &imgName) const
+{
+    return (p->m_textures.find(imgName) != p->m_textures.end());
+}
+
+bool TextureAtlas::loadImage(const std::string &imgName, PaintDevice *painter, Pos &targetPos)
+{
+    return false;
+}
+
+size_t TextureAtlas::count() const
+{
+    return p->m_textures.size();
+}
+
+} // namespace AtlasPack

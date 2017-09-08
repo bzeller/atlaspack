@@ -22,4 +22,4 @@
  * SOFTWARE.
  */
 
-#include "textureatlas.h"
+#include "textureatlaspacker.h"

@@ -22,7 +22,13 @@
  * SOFTWARE.
  */
 #include <AtlasPack/TextureAtlasPacker>
+#include <AtlasPack/textureatlas_p.h>
+#include <boost/filesystem.hpp>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+
+namespace fs =  boost::filesystem;
 
 namespace AtlasPack {
 
@@ -42,7 +48,7 @@ class TextureAtlasPackerPrivate {
     public:
 
     Node *insertImage (const Image &img, Node *node);
-    void renderNode (std::shared_ptr<PaintDevice> painter, Node *node);
+    bool collectNodes(TextureAtlasPrivate *atlas, std::shared_ptr<PaintDevice> painter, std::basic_ostream<char> *descStr, Node *node, std::string *err = nullptr);
 
     Node m_root;
 };
@@ -113,23 +119,42 @@ Node *TextureAtlasPackerPrivate::insertImage(const Image &img, Node *node)
     }
 }
 
-void TextureAtlasPackerPrivate::renderNode(std::shared_ptr<PaintDevice> painter, Node *node)
+bool TextureAtlasPackerPrivate::collectNodes(TextureAtlasPrivate *atlas, std::shared_ptr<PaintDevice> painter, std::basic_ostream<char> *descStr, Node *node, std::string *err)
 {
-    bool rendered = false;
+    bool collected = false;
     if(node->img.isValid()) {
-        rendered = true;
-        painter->paintImageFromFile(node->rect.topLeft, node->img.path());
+        collected = true;
+
+        Texture t(node->rect.topLeft, node->img);
+        atlas->m_textures[node->img.path()] = t;
+
+        (*descStr) << node->img.path() <<","
+                   << t.pos.x<<","
+                   << t.pos.y<<","
+                   << t.image.width()<<","
+                   << t.image.height()<<"\n";
+
+        if(!painter->paintImageFromFile(node->rect.topLeft, node->img.path())) {
+            if (err) {
+                *err = "Failed to paint image: "+node->img.path();
+            }
+            return false;
+        }
     }
 
     if(node->left) {
-        if(rendered) std::cerr<<"Node has leafs AND image?"<<std::endl;
-        renderNode(painter, node->left.get());
+        if(collected) std::cerr<<"Node has leafs AND image?"<<std::endl;
+        if (!collectNodes(atlas, painter, descStr, node->left.get(), err))
+            return false;
     }
 
     if(node->right){
-        if(rendered) std::cerr<<"Node has leafs AND image?"<<std::endl;
-        renderNode(painter, node->right.get());
+        if(collected) std::cerr<<"Node has leafs AND image?"<<std::endl;
+        if (!collectNodes(atlas, painter, descStr, node->right.get(), err))
+            return false;
     }
+
+    return true;
 }
 
 TextureAtlasPacker::TextureAtlasPacker(Size atlasSize)
@@ -153,11 +178,63 @@ bool TextureAtlasPacker::insertImage(const Image &img)
     return p->insertImage(img, &p->m_root) != nullptr;
 }
 
-bool TextureAtlasPacker::render(Backend *backend)
+TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *backend, std::string *error) const
 {
-    auto painter = backend->createPaintDevice(p->m_root.rect.size);
-    p->renderNode(painter, &p->m_root);
-    return painter->exportToFile("/tmp/mafirstmap.jpg");
+
+    try {
+
+        fs::path descFileName(basePath + ".atlas");
+        fs::path textureFile(basePath + ".png");
+
+        if (!fs::exists(descFileName.parent_path())
+                || !fs::is_directory(descFileName.parent_path())) {
+            if (error)
+                *error = "Basepath is not a directory or does not exist";
+            return TextureAtlas();
+        }
+
+#if 0
+        if (fs::exists(descFileName)) {
+            if (error)
+                *error = "Atlas file exists already";
+            return TextureAtlas();
+        }
+
+        if (fs::exists(textureFile)) {
+            if (error)
+                *error = "Texture file exists already";
+            return TextureAtlas();
+        }
+#endif
+
+        std::ofstream descFile(descFileName.string(), std::ios::trunc | std::ios::out);
+        if(!descFile.is_open()) {
+            if (error)
+                *error = "Could not create atlas index file";
+            return TextureAtlas();
+        }
+
+        auto painter = backend->createPaintDevice(p->m_root.rect.size);
+
+        std::unique_ptr<TextureAtlasPrivate> priv = std::make_unique<TextureAtlasPrivate>();
+
+        if(!p->collectNodes(priv.get(), painter, &descFile, &p->m_root, error))
+            return TextureAtlas();
+
+        if(!painter->exportToFile(textureFile.string())) {
+            if (error) *error = "Failed to export Texture to file";
+            return TextureAtlas();
+        }
+
+        descFile.close();
+        return TextureAtlas(priv.release());
+
+
+    } catch (...) {
+
+    }
+
+    return TextureAtlas();
 }
 
 

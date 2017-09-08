@@ -11,6 +11,7 @@ set (HEADERS
     include/AtlasPack/textureatlaspacker.h
     include/AtlasPack/TextureAtlas
     include/AtlasPack/textureatlas.h
+    include/AtlasPack/textureatlas_p.h
     include/AtlasPack/Image
     include/AtlasPack/image.h
     include/AtlasPack/Backend
