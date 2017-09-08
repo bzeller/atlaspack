@@ -32,6 +32,12 @@ namespace fs =  boost::filesystem;
 
 namespace AtlasPack {
 
+/**
+ * \internal
+ * Represents a Node in the packing tree algorithm,
+ * can contain either child nodes or a image. The rect
+ * variable is always set.
+ */
 struct Node {
 
     Node (Rect _rect = Rect())
@@ -55,7 +61,6 @@ class TextureAtlasPackerPrivate {
 
 /**
  * @brief TextureAtlasPrivate::insertImage
- * Algorithm based on lightmap packing found on http://blackpawn.com/texts/lightmaps/default.html
  * \returns the Node the Image was inserted into, nullptr if not enough space is available
  */
 Node *TextureAtlasPackerPrivate::insertImage(const Image &img, Node *node)
@@ -119,21 +124,33 @@ Node *TextureAtlasPackerPrivate::insertImage(const Image &img, Node *node)
     }
 }
 
+/**
+ * @internal
+ * @brief TextureAtlasPackerPrivate::collectNodes
+ * Iterates over the full tree, filling the \a atlas and painting the images using the \a painter as well as writing
+ * the image rectangle and filenmame into the output stream given by \a descStr.
+ * If a error occurs and \a err is set, a error message is put there.
+ */
 bool TextureAtlasPackerPrivate::collectNodes(TextureAtlasPrivate *atlas, std::shared_ptr<PaintDevice> painter, std::basic_ostream<char> *descStr, Node *node, std::string *err)
 {
     bool collected = false;
     if(node->img.isValid()) {
         collected = true;
 
+        // we found a Image node, lets fill the information into the given structures
         Texture t(node->rect.topLeft, node->img);
         atlas->m_textures[node->img.path()] = t;
 
+        // the description file is written as a CSV file
+        // @NOTE possible room for improvement, make the description file structure modular,
+        // to make it easy to use another format
         (*descStr) << node->img.path() <<","
                    << t.pos.x<<","
                    << t.pos.y<<","
                    << t.image.width()<<","
                    << t.image.height()<<"\n";
 
+        // paint the texture into the cache image
         if(!painter->paintImageFromFile(node->rect.topLeft, node->img.path())) {
             if (err) {
                 *err = "Failed to paint image: "+node->img.path();
@@ -142,20 +159,34 @@ bool TextureAtlasPackerPrivate::collectNodes(TextureAtlasPrivate *atlas, std::sh
         }
     }
 
-    if(node->left) {
+    if (collected && (node->left || node->right )) {
+        //this should never happen, if it does at least print a warning about it
         if(collected) std::cerr<<"Node has leafs AND image?"<<std::endl;
+    }
+
+    //recursively iterate through the child nodes, start with the left node again
+    if(node->left) {
         if (!collectNodes(atlas, painter, descStr, node->left.get(), err))
             return false;
     }
 
     if(node->right){
-        if(collected) std::cerr<<"Node has leafs AND image?"<<std::endl;
         if (!collectNodes(atlas, painter, descStr, node->right.get(), err))
             return false;
     }
 
     return true;
 }
+
+/**
+ * @class TextureAtlasPacker::TextureAtlasPacker
+ * Implements a packing algorithm to pack images into a bigger texture, called
+ * a \a AtlasPack::TextureAtlas. This can speed up image loading in applications that make use
+ * of a lot of small image files.
+ *
+ * This implementation makes use of the lightmap packing algorithm that can be found at http://blackpawn.com/texts/lightmaps/default.html
+ */
+
 
 TextureAtlasPacker::TextureAtlasPacker(Size atlasSize)
     : p(new TextureAtlasPackerPrivate())
@@ -178,6 +209,14 @@ bool TextureAtlasPacker::insertImage(const Image &img)
     return p->insertImage(img, &p->m_root) != nullptr;
 }
 
+
+/**
+ * @brief TextureAtlasPacker::compile
+ * Compiles the current in memory state of the TextureAtlas into a description and
+ * image file and stores them on disk. Expects \a basePath to point at a user writeable directory,
+ * the last part of \a basePath will be used to form the texture atlas description file and image file names.
+ *
+ */
 TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *backend, std::string *error) const
 {
 
@@ -192,20 +231,6 @@ TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *b
                 *error = "Basepath is not a directory or does not exist";
             return TextureAtlas();
         }
-
-#if 0
-        if (fs::exists(descFileName)) {
-            if (error)
-                *error = "Atlas file exists already";
-            return TextureAtlas();
-        }
-
-        if (fs::exists(textureFile)) {
-            if (error)
-                *error = "Texture file exists already";
-            return TextureAtlas();
-        }
-#endif
 
         std::ofstream descFile(descFileName.string(), std::ios::trunc | std::ios::out);
         if(!descFile.is_open()) {
