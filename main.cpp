@@ -26,11 +26,14 @@
 
 #include <AtlasPack/TextureAtlasPacker>
 #include <AtlasPack/TextureAtlas>
+#include <AtlasPack/JobQueue>
 
 #include <iostream>
 #include <thread>
 #include <future>
 #include <functional>
+#include <utility>
+#include <chrono>
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
 
@@ -38,11 +41,6 @@
 
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
-
-struct Job {
-    std::future<std::shared_ptr<AtlasPack::TextureAtlasPacker> > future;
-    std::shared_ptr<std::thread> task;
-};
 
 std::vector<AtlasPack::Image> collectImageFiles (AtlasPack::Backend *backend, const fs::path &readDir, bool recursive = false)
 {
@@ -92,7 +90,7 @@ std::vector<AtlasPack::Image> collectImageFiles (AtlasPack::Backend *backend, co
                 continue;
             }
 
-            std::cout<<"Found Image: "<<img.path()<<std::endl;
+            //std::cout<<"Found Image: "<<img.path()<<std::endl;
             result.push_back(img);
         }
 
@@ -200,66 +198,60 @@ int main(int argc, char *argv[])
                 std::cerr << "Input path is not a directory."<<std::endl;
                 return 1;
             }
+            std::cout << "Starting to collect files"<<std::endl;
             images = collectImageFiles(&backend, readDir, vm.count("recursive") > 0);
+            std::cout << "Collected "<<images.size()<<" files."<<std::endl;
+
         } catch (const fs::filesystem_error& ex) {
           std::cerr << "Error while reading the input directory: "<<ex.what() << std::endl;
+          return 1;
         }
 
         if (images.size() > 0) {
 
-            //first find a atlas that fits all, incremement by 1000
+            AtlasPack::JobQueue<std::shared_ptr<AtlasPack::TextureAtlasPacker> > jobQueue;
+
             auto packer = [](const AtlasPack::Size &s, const std::vector<AtlasPack::Image> &images) {
+                std::cout<<"Starting calc "<<s.height<<std::endl;
                 std::shared_ptr<AtlasPack::TextureAtlasPacker> result = std::make_shared<AtlasPack::TextureAtlasPacker>(s);
                 for (const auto &img : images) {
                     if (!result->insertImage(img)) {
+                        std::cout<<"Done calc, no fit "<<s.height<<std::endl;
                         return std::shared_ptr<AtlasPack::TextureAtlasPacker>();
                     }
                 }
+                std::cout<<"Done calc, does fit "<<s.height<<std::endl;
                 return result;
             };
 
-            auto startJob = [packer] (const size_t &len, const std::vector<AtlasPack::Image> &images){
-                std::packaged_task<std::shared_ptr<AtlasPack::TextureAtlasPacker>(const AtlasPack::Size&, const std::vector<AtlasPack::Image> &)> task(packer);
 
-                Job job;
-                job.future = task.get_future();
-                job.task =  std::make_shared<std::thread>(std::move(task), AtlasPack::Size(len, len), images);
-                return job;
-            };
+            unsigned int cores = jobQueue.maxJobs();
 
-
-            unsigned int cores = std::thread::hardware_concurrency();
-            if (cores == 0) {
-                //in case the core detection fails use at least 2 threads
-                cores = 2;
-            }
-
+            //first find a atlas that fits all, incremement by 1000
             size_t lastSize = 1000;
-            size_t increment = 1000;
+            size_t increment = 100;
 
-            std::cout<<"Using "<<cores<<" cores to calculate Atlas";
+            std::cout<<"Using "<<cores<<" cores to calculate Atlas"<<std::endl;
 
             std::shared_ptr<AtlasPack::TextureAtlasPacker> lastPossibleAtlas;
 
             while (!lastPossibleAtlas) {
 
-                std::vector<Job> runningJobs;
-                runningJobs.reserve(cores);
+                std::vector<std::future<std::shared_ptr<AtlasPack::TextureAtlasPacker> > > taskResults;
 
                 for (unsigned int i = 0; i < cores; i++) {
-                    runningJobs.push_back(startJob(lastSize + increment, images));
+                    auto fun = std::bind(packer, AtlasPack::Size(lastSize, lastSize), images);
+                    taskResults.push_back(jobQueue.addTask(fun));
                     lastSize += increment;
                 }
 
-                //wait for all tasks to be finished
-                for (Job &currJob : runningJobs ) {
-                    currJob.task->join();
-                }
+                //wait until all tasks are finished
+                jobQueue.waitForAllRunningTasks();
 
                 //now find a Atlas that fits all images
-                for (Job &currJob : runningJobs ) {
+                for (auto &currJob : taskResults ) {
                     //if we get a Atlas we found one that fits
-                    lastPossibleAtlas = currJob.future.get();
+                    lastPossibleAtlas = currJob.get();
                     if (lastPossibleAtlas)
                         break;
                 }
@@ -269,12 +261,11 @@ int main(int argc, char *argv[])
                 std::cout<<"Found a atlas that can contain all: "<<lastPossibleAtlas->size().height<<std::endl;
 
                 bool canGoOn = true;
-                size_t decrement = 10;
+                size_t decrement = 1;
                 lastSize  = lastPossibleAtlas->size().height;
                 while (canGoOn) {
 
-                    std::vector<Job> runningJobs;
-                    runningJobs.reserve(cores);
+                    std::vector<std::future<std::shared_ptr<AtlasPack::TextureAtlasPacker> > > taskResults;
 
                     for (unsigned int i = 0; i < cores; i++) {
 
@@ -282,17 +273,19 @@ int main(int argc, char *argv[])
                         if(decrement > lastSize)
                             break;
 
-                        runningJobs.push_back(startJob(lastSize - decrement, images));
+                        AtlasPack::Size mySize = AtlasPack::Size(lastSize - decrement, lastSize - decrement);
+
+                        auto fun = std::bind(packer, mySize, images);
+                        taskResults.push_back(jobQueue.addTask(fun));
+
                         lastSize -= decrement;
                     }
 
                     //wait for all tasks to be finished
-                    for (Job &currJob : runningJobs ) {
-                        currJob.task->join();
-                    }
+                    jobQueue.waitForAllRunningTasks();
 
-                    for (Job &currJob : runningJobs ) {
-                        auto result = currJob.future.get();
+                    for (auto &currJob : taskResults ) {
+                        auto result = currJob.get();
                         if (result)
                             lastPossibleAtlas = result;
                         else {

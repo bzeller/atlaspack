@@ -16,6 +16,8 @@ set (HEADERS
     include/AtlasPack/image.h
     include/AtlasPack/Backend
     include/AtlasPack/backend.h
+    include/AtlasPack/JobQueue
+    include/AtlasPack/jobqueue.h
     )
 
 set (SOURCES

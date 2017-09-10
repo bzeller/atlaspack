@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(atlaspack)
+project(atlaspack C CXX)
 
 # enable C++14 features
 if (CMAKE_VERSION VERSION_LESS "3.1")
@@ -24,6 +24,9 @@ find_package(ImageMagick
     COMPONENTS Magick++
 )
 
+#threading
+find_package (Threads)
+
 add_subdirectory(libatlaspack)
 
 INCLUDE_DIRECTORIES(libatlaspack/include ${ImageMagick_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
@@ -38,4 +41,4 @@ set (SOURCES
     )
 
 add_executable(${PROJECT_NAME}-cli ${HEADERS} ${SOURCES})
-target_link_libraries(${PROJECT_NAME}-cli Boost::program_options Boost::filesystem libatlaspack ${ImageMagick_LIBRARIES} pthread)
+target_link_libraries(${PROJECT_NAME}-cli Boost::program_options Boost::filesystem libatlaspack ${ImageMagick_LIBRARIES} Threads::Threads)
