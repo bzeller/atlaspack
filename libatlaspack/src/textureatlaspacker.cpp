@@ -157,16 +157,6 @@ bool TextureAtlasPackerPrivate::collectNodes(TextureAtlasPrivate *atlas, std::sh
 
         painterResults.push_back(painterQueue->addTask(std::bind(fun, painter, node)));
 
-#if 0
-        // paint the texture into the cache image
-        if(!painter->paintImageFromFile(node->rect.topLeft, node->img.path())) {
-            if (err) {
-                *err = "Failed to paint image: "+node->img.path();
-            }
-            return false;
-        }
-#endif
-
         // the description file is written as a CSV file
         // @NOTE possible room for improvement, make the description file structure modular,
         // to make it easy to use another format
@@ -218,11 +208,22 @@ TextureAtlasPacker::~TextureAtlasPacker()
     if (p) delete p;
 }
 
+/*!
+ * \brief TextureAtlasPacker::size
+ * Returns the current geometrical size of the texture atlas.
+ */
 Size TextureAtlasPacker::size() const
 {
     return p->m_root.rect.size;
 }
 
+/*!
+ * \brief TextureAtlasPacker::insertImage
+ * Tried to insert the \sa AtlasPack::Image given by \a img into the atlas.
+ * The internal algorithm will split the atlas rectangle into smaller portions
+ * until the image fits.
+ * Returns \a true on success, or \a false in case the atlas does not have enough remaining space.
+ */
 bool TextureAtlasPacker::insertImage(const Image &img)
 {
     return p->insertImage(img, &p->m_root) != nullptr;
@@ -230,11 +231,13 @@ bool TextureAtlasPacker::insertImage(const Image &img)
 
 
 /**
- * @brief TextureAtlasPacker::compile
+ * \brief TextureAtlasPacker::compile
  * Compiles the current in memory state of the TextureAtlas into a description and
  * image file and stores them on disk. Expects \a basePath to point at a user writeable directory,
  * the last part of \a basePath will be used to form the texture atlas description file and image file names.
  *
+ * \note This can take a lot of time for a big list of images, however the implementation does run with multiple
+ *       threads to speed the process up.
  */
 TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *backend, std::string *error) const
 {

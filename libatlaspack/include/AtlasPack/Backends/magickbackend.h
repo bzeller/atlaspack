@@ -23,43 +23,36 @@
  */
 
 #include <AtlasPack/Backend>
+#include <AtlasPack/PaintDevice>
 
 namespace AtlasPack {
+namespace Backends {
 
-/**
- * \class AtlasPack::Backend
- * The \a Backend class is the link between the packing algorithms and the means
- * of how libatlaspack paints the resulting texture atlas. It can be used to support
- * custom image processing libraries.
- *
- * \note Painting the images has to be thread safe, since \sa AtlasPack::TextureAtlasPacker uses
- * multiple threads to paint the images
- */
-
-/**
-  * \fn AtlasPack::Backend::supportsImageType
-  * Checks if the Backend implementation supports the image type given by \a extension.
-  * The \a extension string has to be in boost::filesystem format e.g. ".png"
-  */
-
-/**
-  * \fn AtlasPack::Backend::createPaintDevice
-  * Creates a new instance of \sa AtlasPack::PaintDevice and initializes the painter geometry with
-  * \a size.
-  */
-
-/**
-  * \fn AtlasPack::Backend::readImageInformation
-  * Opens the image specified by \a path and reads the minimal required information
-  * to fill the return value type \sa AtlasPack::Image.
-  *
-  * \note depending on the Backend implementation this might need to read the full image, however if
-  *       possible the Backend should only read as little from the file as needed
-  */
-
-Backend::~Backend()
+class MagickBackend : public AtlasPack::Backend
 {
+    public:
+        MagickBackend();
 
-}
+        // Backend interface
+        virtual bool supportsImageType (const std::string &extension) const;
+        std::shared_ptr<AtlasPack::PaintDevice> createPaintDevice(const AtlasPack::Size &reserveSize) const;
+        AtlasPack::Image readImageInformation(const std::string &path) const;
+};
 
-}
+
+class MagickPaintDevicePrivate;
+class MagickPaintDevice : public AtlasPack::PaintDevice
+{
+    public:
+        MagickPaintDevice(const AtlasPack::Size &reserveSize);
+        virtual ~MagickPaintDevice();
+
+        // PaintDevice interface
+        bool paintImageFromFile(AtlasPack::Pos topleft, std::string filename) override;
+        bool exportToFile (std::string filename) override;
+
+    private:
+        MagickPaintDevicePrivate *p = nullptr;
+};
+
+}}

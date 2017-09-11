@@ -27,11 +27,14 @@
 #include <functional>
 #include <AtlasPack/Dimension>
 
+#include <boost/noncopyable.hpp>
+
 namespace AtlasPack {
 
-class PaintDevice {
+class PaintDevice : public boost::noncopyable {
 
     public:
+        virtual ~PaintDevice();
         virtual bool exportToFile (std::string filename) = 0;
         virtual bool paintImageFromFile (Pos topleft, std::string filename) = 0;
 

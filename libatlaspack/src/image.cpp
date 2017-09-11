@@ -25,8 +25,8 @@
 #include <AtlasPack/Image>
 
 /**
- * @class Image
- * @brief Represents informations about a texture to be painted into the Atlas
+ * \class AtlasPack::Image
+ * \brief Represents informations about a texture to be painted into the Atlas
  */
 
 namespace AtlasPack {
@@ -41,6 +41,13 @@ namespace AtlasPack {
             AtlasPack::Size size;
             bool valid = true;
     };
+
+    /*!
+     * \class Atlaspack::Image
+     * Lightweight class to store image information like path and geometry for
+     * atlas calculations. Makes it possible to calculate really big Atlas textures
+     * without using a big amount of memory.
+     */
 
 
     Image::Image()

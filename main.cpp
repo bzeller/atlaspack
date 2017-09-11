@@ -22,11 +22,11 @@
  * SOFTWARE.
  */
 
-#include "magickbackend.h"
-
 #include <AtlasPack/TextureAtlasPacker>
 #include <AtlasPack/TextureAtlas>
 #include <AtlasPack/JobQueue>
+
+#include <AtlasPack/Backends/MagickBackend>
 
 #include <iostream>
 #include <thread>
@@ -42,7 +42,28 @@
 namespace po = boost::program_options;
 namespace fs = boost::filesystem;
 
-std::vector<AtlasPack::Image> collectImageFiles (AtlasPack::Backend *backend, const fs::path &readDir, bool recursive = false)
+/*
+ * Returns the help text
+ * \note Will contain a empty string if called before parseCommandLine
+ */
+static std::string &helpText () {
+    static std::string text;
+    return text;
+}
+
+/*
+ * Prints the help to stdout
+ * \note Will contain a empty string if called before parseCommandLine
+ */
+static void showHelp () {
+    std::cerr<<helpText()<<std::endl;
+}
+
+/*
+ * Collects all files that the backend supports in \a readDir.
+ * If \a recursive is true all subdirectories will be searched as well
+ */
+static std::vector<AtlasPack::Image> collectImageFiles (AtlasPack::Backend *backend, const fs::path &readDir, bool recursive = false)
 {
     std::vector<AtlasPack::Image> result;
 
@@ -101,8 +122,10 @@ std::vector<AtlasPack::Image> collectImageFiles (AtlasPack::Backend *backend, co
     return result;
 }
 
-int main(int argc, char *argv[])
-{
+/*
+ * Builds the commandline parameters and parses the arguments. Returns \a true on success.
+ */
+static bool parseCommandline (int argc, char *argv[], po::variables_map &vm) {
     //Initialize the boost commandline parser with possible options
     po::options_description desc("General");
     desc.add_options()
@@ -135,23 +158,22 @@ int main(int argc, char *argv[])
 
 
     //generate a help message
-    auto showHelp = [&]() {
-        // Declare an options description instance which will only include arguments
-        // we want to be visible
-        po::options_description visibleOptions("Usage:\n"
-                                               "  atlasbuilder --mode=pack [options] input_directory\n"
-                                               "  atlasbuilder --mode=extract [options] filename_to_extract\n\n"
-                                               "The atlasbuilder has two different modes, one for packing a directory\n"
-                                               "and one for extracting a file from a texture atlas:\n"
-                                               "\nBuild atlas:\n  atlasbuilder --mode=pack -o /tmp/atlas.jpg /tmp/directory_with_files\n"
-                                               "\nExtract from atlas:\n  atlasbuilder --mode=extract -o /tmp/output.jpg /tmp/atlas.json\n\n");
-        visibleOptions.add(desc).add(descPack).add(descUnpack);
-        std::cout << visibleOptions << "\n";
-    };
 
+    // Declare an options description instance which will only include arguments
+    // we want to be visible
+    po::options_description visibleOptions("Usage:\n"
+                                           "  atlasbuilder --mode=pack [options] input_directory\n"
+                                           "  atlasbuilder --mode=extract [options] filename_to_extract\n\n"
+                                           "The atlasbuilder has two different modes, one for packing a directory\n"
+                                           "and one for extracting a file from a texture atlas:\n"
+                                           "\nBuild atlas:\n  atlasbuilder --mode=pack -o /tmp/atlas.jpg /tmp/directory_with_files\n"
+                                           "\nExtract from atlas:\n  atlasbuilder --mode=extract -o /tmp/output.jpg /tmp/atlas.json\n\n");
+    visibleOptions.add(desc).add(descPack).add(descUnpack);
+    std::stringstream helpStr;
+    helpStr << visibleOptions;
+    helpText() = helpStr.str();
 
     //now parse the commandline, try to catch errors as good as possible
-    po::variables_map vm;
     try {
         po::store(po::command_line_parser(argc, argv).
                   options(allOptions).positional(posArgs).run(), vm);
@@ -160,18 +182,33 @@ int main(int argc, char *argv[])
         //what will contain a user friendly error message, so we just can show that directly
         std::cout << "Error: " << err.what() << "\n\n";
         showHelp();
-        return 1;
+        return false;
     } catch (...) {
         std::cout << "Catched an unknown exception from the commandline parser, please check your options.\n\n";
         showHelp();
-        return 1;
+        return false;
     }
 
     //help was asked, lets show it and return a error
     if (vm.count("help")) {
         showHelp();
+        return false;
+    }
+
+    return true;
+}
+
+int main(int argc, char *argv[])
+{
+
+    po::variables_map vm;
+    if (!parseCommandline(argc, argv, vm)) {
         return 1;
     }
+
+    //initialize the backend, this could be extended to load automatically
+    //from plugins
+    AtlasPack::Backends::MagickBackend backend;
 
     if (vm["mode"].as<std::string>() == "pack") {
 
@@ -180,10 +217,6 @@ int main(int argc, char *argv[])
             showHelp();
             return 1;
         }
-
-        //initialize the backend, this could be extended to load automatically
-        //from plugins
-        MagickBackend backend;
 
         std::vector<AtlasPack::Image> images;
 

@@ -35,6 +35,7 @@ namespace AtlasPack {
 
 class Backend {
     public:
+        virtual ~Backend();
         virtual bool supportsImageType (const std::string &extension) const = 0;
         virtual std::shared_ptr<PaintDevice> createPaintDevice (const Size &reserveSize) const = 0;
         virtual Image readImageInformation (const std::string &path) const = 0;

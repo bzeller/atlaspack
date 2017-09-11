@@ -18,27 +18,16 @@ find_package(Boost
   program_options filesystem system
 )
 
-# image magick for the backend implementation
-find_package(ImageMagick
-    REQUIRED
-    COMPONENTS Magick++
-)
-
 #threading
 find_package (Threads)
 
 add_subdirectory(libatlaspack)
 
-INCLUDE_DIRECTORIES(libatlaspack/include ${ImageMagick_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
-
-set (HEADERS
-    magickbackend.h
-    )
+INCLUDE_DIRECTORIES(libatlaspack/include ${Boost_INCLUDE_DIRS})
 
 set (SOURCES
-    magickbackend.cpp
     main.cpp
     )
 
 add_executable(${PROJECT_NAME}-cli ${HEADERS} ${SOURCES})
-target_link_libraries(${PROJECT_NAME}-cli Boost::program_options Boost::filesystem libatlaspack ${ImageMagick_LIBRARIES} Threads::Threads)
+target_link_libraries(${PROJECT_NAME}-cli Boost::program_options libatlaspack Threads::Threads)

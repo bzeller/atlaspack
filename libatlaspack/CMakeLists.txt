@@ -1,6 +1,19 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(libatlaspack)
+project(libatlaspack C CXX)
+
+# image magick for the backend implementation
+find_package(ImageMagick
+    REQUIRED
+    COMPONENTS Magick++
+)
+
+# require Boost libraries
+find_package(Boost
+  "1.58"
+  REQUIRED
+  program_options filesystem system
+)
 
 set (HEADERS
     include/AtlasPack/dimension.h
@@ -18,16 +31,21 @@ set (HEADERS
     include/AtlasPack/backend.h
     include/AtlasPack/JobQueue
     include/AtlasPack/jobqueue.h
+    include/AtlasPack/atlaspack_global.h
+    include/AtlasPack/Backends/MagickBackend
+    include/AtlasPack/Backends/magickbackend.h
     )
 
 set (SOURCES
     src/textureatlaspacker.cpp
     src/textureatlas.cpp
+    src/paintdevice.cpp
     src/backend.cpp
     src/image.cpp
+    src/backends/magickbackend.cpp
     )
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/include ${ImageMagick_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 add_library(${PROJECT_NAME} SHARED ${HEADERS} ${SOURCES})
-target_link_libraries(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME}  ${ImageMagick_LIBRARIES} Boost::filesystem)
