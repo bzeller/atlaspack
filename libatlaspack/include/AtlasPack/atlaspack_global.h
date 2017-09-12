@@ -5,7 +5,6 @@
 #define DECL_EXPORT         __declspec(dllexport)
 #define DECL_IMPORT         __declspec(dllimport)
 #else
-// OSX and Linux use the same declaration mode for inport and export
 #define DECL_EXPORT         __attribute__((visibility("default")))
 #define DECL_IMPORT         __attribute__((visibility("default")))
 #endif

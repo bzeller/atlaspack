@@ -18,12 +18,18 @@ find_package(Boost
   program_options filesystem system
 )
 
+# add Visual studio specific defines
+if(MSVC) 
 add_definitions(
-    -DATLASPACK_LIBRARY
     -D_VISUALC_
     -DNeedFunctionPrototypes
     -D_DLL
     -D_MAGICKMOD_
+)
+endif()
+
+add_definitions(
+    -DATLASPACK_LIBRARY
     )
 
 set (HEADERS
