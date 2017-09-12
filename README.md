@@ -22,7 +22,9 @@ Possible known issues are:
 - The implementation to extract a image from the texture atlas is missing
 - Plugin loading could be implemented to make the use of Backends more flexible
 
-
+Using the tool
+--------------------------
+```
 Usage:
   atlaspack-cli [options] input_directory [output_filename]
 
@@ -34,7 +36,7 @@ General:
 
 pack:
   -r [ --recursive ]     Search also subdirectories for images
-
+```
 
 Calling the tool as in the example: "atlaspack-cli /tmp/directory_with_files /tmp/MyAtlas" will
 generate a /tmp/MyAtlas.atlas and /tmp/MyAtlas.png. The .atlas file contains the texture description
@@ -45,13 +47,13 @@ output.atlas and output.png filenames.
 
 Third-Party dependencies:
 --------------------------
-Boost 1.5.8
-ImageMagick 7.0.7-1
+- Boost 1.5.8
+- ImageMagick 7.0.7-1
 
 
 Build on Ubuntu 16.04 LTS
 --------------------------------------------------------------------
-
+```
 # Install dependencies:
 sudo apt install build-essential git libboost-all-dev libmagick++-dev cmake
 
@@ -62,7 +64,7 @@ mkdir build && cd build
 cmake ..
 make
 ./atlaspack-cli --help
-
+```
 
 Build on Windows 7 32bit using Visual Studio 2015 Express:
 --------------------------------------------------------------------
@@ -75,20 +77,24 @@ Dependencies:
 1. Create a dedicated project directory. For example C:\dev
 2. Download Boost sources v 1.5.8 and extract them to C:\dev\boost
 3. Build Boost with:
+```
    cd c:\dev\boost
    bootstrap
    .\b2
    .\b2 program_options filesystem system
+```
 4. Download ImageMagick , the one tested with was https://www.imagemagick.org/download/binaries/ImageMagick-7.0.7-1-Q8-x86-dll.exe
 5. Install ImageMagick to c:\dev
 6. Download CMake from https://cmake.org/files/v3.8/cmake-3.8.2-win32-x86.msi and install into C:\dev\cmake
 7. git clone atlaspack into c:\dev\project\atlaspack
 8. Open the Visual Studio command prompt
 9. Create Visual Studio project files with:
+```
    cd c:\dev\project
    mkdir c:\dev\project\build-vs
    cd build-vs
    C:\dev\cmake\bin\cmake.exe -DBOOST_ROOT=C:\dev\boost -DBOOST_LIBRARYPATH=C:\dev\boost\stage\lib ../atlaspack
+```
 
 After the last step there should be atlaspack.sln created in the build-vs directory that can be opened and built inside
 Visual Studio 2015. Please make ABSOLUTELY sure to use the release build configuration otherwise binary incompatibilities
