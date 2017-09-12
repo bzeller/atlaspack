@@ -166,7 +166,7 @@ static bool parseCommandline (int argc, char *argv[], po::variables_map &vm) {
                                            "  atlasbuilder --mode=extract [options] filename_to_extract\n\n"
                                            "The atlasbuilder has two different modes, one for packing a directory\n"
                                            "and one for extracting a file from a texture atlas:\n"
-                                           "\nBuild atlas:\n  atlasbuilder --mode=pack -o /tmp/atlas.jpg /tmp/directory_with_files\n"
+                                           "\nBuild atlas:\n  atlasbuilder --mode=pack -b /tmp/MyAtlas /tmp/directory_with_files\n"
                                            "\nExtract from atlas:\n  atlasbuilder --mode=extract -o /tmp/output.jpg /tmp/atlas.json\n\n");
     visibleOptions.add(desc).add(descPack).add(descUnpack);
     std::stringstream helpStr;
@@ -245,15 +245,12 @@ int main(int argc, char *argv[])
             AtlasPack::JobQueue<std::shared_ptr<AtlasPack::TextureAtlasPacker> > jobQueue;
 
             auto packer = [](const AtlasPack::Size &s, const std::vector<AtlasPack::Image> &images) {
-                std::cout<<"Starting calc "<<s.height<<std::endl;
                 std::shared_ptr<AtlasPack::TextureAtlasPacker> result = std::make_shared<AtlasPack::TextureAtlasPacker>(s);
                 for (const auto &img : images) {
                     if (!result->insertImage(img)) {
-                        std::cout<<"Done calc, no fit "<<s.height<<std::endl;
                         return std::shared_ptr<AtlasPack::TextureAtlasPacker>();
                     }
                 }
-                std::cout<<"Done calc, does fit "<<s.height<<std::endl;
                 return result;
             };
 
@@ -292,6 +289,7 @@ int main(int argc, char *argv[])
 
             if (lastPossibleAtlas) {
                 std::cout<<"Found a atlas that can contain all: "<<lastPossibleAtlas->size().height<<std::endl;
+                std::cout<<"Trying to shrink Atlas size"<<std::endl;
 
                 bool canGoOn = true;
                 size_t decrement = 1;
@@ -329,13 +327,14 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                std::cout<<"Calculated Atlas size: "<<lastPossibleAtlas->size().height<<std::endl;
+                std::cout<<"Final Atlas size: "<<lastPossibleAtlas->size().height<<std::endl;
+                std::cout<<"Compiling Atlas ....."<<std::endl;
 
                 std::string err;
                 AtlasPack::TextureAtlas atlas = lastPossibleAtlas->compile(vm["atlasBaseName"].as<std::string>(), &backend, &err);
 
                 if(atlas.isValid()) {
-                    std::cout<<"Created a Atlas with "<<atlas.count()<<" Images from List "<<images.size()<<std::endl;
+                    std::cout<<"Created a Atlas with "<<atlas.count()<<" Images from a List of "<<images.size()<<" Images."<<std::endl;
                     return 0;
                 } else {
                     std::cout<<"Failed to create Atlas, error was: "<<err<<std::endl;

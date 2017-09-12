@@ -146,6 +146,7 @@ bool TextureAtlasPackerPrivate::collectNodes(TextureAtlasPrivate *atlas, std::sh
         Texture t(node->rect.topLeft, node->img);
         atlas->m_textures[node->img.path()] = t;
 
+        // Renders the node into the atlas image, called from a async thread
         auto fun = [](std::shared_ptr<PaintDevice> painter, Node *node){
             // paint the texture into the cache image
             if(!painter->paintImageFromFile(node->rect.topLeft, node->img.path())) {
@@ -155,6 +156,7 @@ bool TextureAtlasPackerPrivate::collectNodes(TextureAtlasPrivate *atlas, std::sh
             return true;
         };
 
+        // push the future results into a vector, so we can check if we had errors after all tasks are done
         painterResults.push_back(painterQueue->addTask(std::bind(fun, painter, node)));
 
         // the description file is written as a CSV file
@@ -244,11 +246,13 @@ TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *b
 
     try {
 
+        //the basepath is used to create the filenames for the 2 output files
         fs::path descFileName(basePath + ".atlas");
         fs::path textureFile(basePath + ".png");
 
         JobQueue<bool> jobs;
 
+        //check if the output directory exists
         if (!fs::exists(descFileName.parent_path())
                 || !fs::is_directory(descFileName.parent_path())) {
             if (error)
@@ -256,6 +260,7 @@ TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *b
             return TextureAtlas();
         }
 
+        //create atlas description text file
         std::ofstream descFile(descFileName.string(), std::ios::trunc | std::ios::out);
         if(!descFile.is_open()) {
             if (error)
@@ -263,19 +268,23 @@ TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *b
             return TextureAtlas();
         }
 
+        //get new painter instance from the backend
         auto painter = backend->createPaintDevice(p->m_root.rect.size);
 
         std::unique_ptr<TextureAtlasPrivate> priv = std::make_unique<TextureAtlasPrivate>();
-
-
         std::vector<std::future<bool> > paintResults;
 
+        //recursively collect all nodes, write them to the desc file and give paint tasks to the
+        //JobQueue to run asynchronously
         if(!p->collectNodes(priv.get(), painter, &descFile, &p->m_root, &jobs, paintResults, error))
             return TextureAtlas();
 
         //wait until all painters are done
         jobs.waitForAllRunningTasks();
 
+        //check if we have errors in some of the painters, no need
+        //to print which one here, because the painters will print a error message on their
+        //own if required
         for (std::future<bool> &res : paintResults) {
             if (!res.get()) {
                 std::cout<<"Some images failed to paint";
@@ -283,6 +292,7 @@ TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *b
             }
         }
 
+        //finally save the result to a file
         if(!painter->exportToFile(textureFile.string())) {
             if (error) *error = "Failed to export Texture to file";
             return TextureAtlas();
@@ -291,8 +301,10 @@ TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *b
         descFile.close();
         return TextureAtlas(priv.release());
 
+    } catch (const fs::filesystem_error& ex) {
+        std::cerr << "Filesystem error while compiling the texture atlas: "<<ex.what() << std::endl;
     } catch (...) {
-
+        std::cerr << "Catched an unknown exception when compiling the texture atlas."<< std::endl;
     }
 
     return TextureAtlas();

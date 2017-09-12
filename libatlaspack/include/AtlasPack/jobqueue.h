@@ -101,7 +101,7 @@ void JobQueue<T>::waitForAllRunningTasks() {
     std::unique_lock<std::mutex> lk(m_mutex);
 
     //check if there are thread running or tasks pending
-    while (m_waitingTasks.size() != 0) {
+    while (m_waitingTasks.size() != 0 || m_runningThreads > 0 ) {
         m_queue_empty.wait(lk);
     }
 }
@@ -109,7 +109,8 @@ void JobQueue<T>::waitForAllRunningTasks() {
 template<typename T>
 unsigned int JobQueue<T>::maxJobs() const {
     unsigned int jobs = std::thread::hardware_concurrency();
-    if (jobs == 0)
+    //use at least 2 threads
+    if (jobs < 2)
         return 2;
     return jobs;
 }
