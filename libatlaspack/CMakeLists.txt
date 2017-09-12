@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(libatlaspack C CXX)
+project(atlaspack C CXX)
 
 # image magick for the backend implementation
 find_package(ImageMagick
@@ -9,11 +9,28 @@ find_package(ImageMagick
 )
 
 # require Boost libraries
+set(Boost_USE_STATIC_LIBS        ON) # only find static libs
+set(Boost_USE_MULTITHREADED      ON)
+set(Boost_USE_STATIC_RUNTIME    OFF)
 find_package(Boost
   "1.58"
   REQUIRED
   program_options filesystem system
 )
+
+# add Visual studio specific defines
+if(MSVC) 
+add_definitions(
+    -D_VISUALC_
+    -DNeedFunctionPrototypes
+    -D_DLL
+    -D_MAGICKMOD_
+)
+endif()
+
+add_definitions(
+    -DATLASPACK_LIBRARY
+    )
 
 set (HEADERS
     include/AtlasPack/dimension.h
@@ -45,10 +62,12 @@ set (SOURCES
     src/backends/magickbackend.cpp
     )
 
+message("INCLUDE DIR ${ImageMagick_INCLUDE_DIRS}")
+
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/include ${ImageMagick_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 
 add_library(${PROJECT_NAME} SHARED ${HEADERS} ${SOURCES})
-target_link_libraries(${PROJECT_NAME}  ${ImageMagick_LIBRARIES} Boost::filesystem)
+target_link_libraries(${PROJECT_NAME}  ${ImageMagick_LIBRARIES}  ${Boost_LIBRARIES})

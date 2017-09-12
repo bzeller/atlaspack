@@ -22,13 +22,14 @@
  * SOFTWARE.
  */
 
+#include <AtlasPack/atlaspack_global.h>
 #include <AtlasPack/Backend>
 #include <AtlasPack/PaintDevice>
 
 namespace AtlasPack {
 namespace Backends {
 
-class MagickBackend : public AtlasPack::Backend
+class ATLASPACK_EXPORT MagickBackend : public AtlasPack::Backend
 {
     public:
         MagickBackend();
@@ -41,7 +42,7 @@ class MagickBackend : public AtlasPack::Backend
 
 
 class MagickPaintDevicePrivate;
-class MagickPaintDevice : public AtlasPack::PaintDevice
+class ATLASPACK_EXPORT MagickPaintDevice : public AtlasPack::PaintDevice
 {
     public:
         MagickPaintDevice(const AtlasPack::Size &reserveSize);

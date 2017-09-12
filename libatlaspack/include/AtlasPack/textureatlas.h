@@ -24,6 +24,7 @@
 #ifndef ATLASPACK_TEXTUREATLAS_H
 #define ATLASPACK_TEXTUREATLAS_H
 
+#include <AtlasPack/atlaspack_global.h>
 #include <AtlasPack/Image>
 #include <AtlasPack/Backend>
 
@@ -34,7 +35,7 @@ namespace AtlasPack {
 class TextureAtlasPrivate;
 class TextureAtlasPacker;
 
-class TextureAtlas
+class ATLASPACK_EXPORT TextureAtlas
 {
     public:
         TextureAtlas();

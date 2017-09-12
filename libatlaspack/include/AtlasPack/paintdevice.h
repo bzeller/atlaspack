@@ -24,6 +24,7 @@
 #ifndef ATLASPACK_PAINTDEVICE_INCLUDED
 #define ATLASPACK_PAINTDEVICE_INCLUDED
 
+#include <AtlasPack/atlaspack_global.h>
 #include <functional>
 #include <AtlasPack/Dimension>
 
@@ -31,7 +32,7 @@
 
 namespace AtlasPack {
 
-class PaintDevice : public boost::noncopyable {
+class ATLASPACK_EXPORT PaintDevice : public boost::noncopyable {
 
     public:
         virtual ~PaintDevice();

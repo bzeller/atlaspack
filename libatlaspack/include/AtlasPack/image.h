@@ -24,6 +24,7 @@
 #ifndef ATLASPACK_IMAGE_INCLUDED
 #define ATLASPACK_IMAGE_INCLUDED
 
+#include <AtlasPack/atlaspack_global.h>
 #include <AtlasPack/Dimension>
 
 #include <string>
@@ -32,7 +33,7 @@ namespace AtlasPack {
 
 class ImagePrivate;
 
-class Image {
+class ATLASPACK_EXPORT Image {
     public:
         Image ();
         Image (const std::string &path, const Size size);
