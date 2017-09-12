@@ -47,5 +47,8 @@ set (SOURCES
 
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/include ${ImageMagick_INCLUDE_DIRS} ${Boost_INCLUDE_DIRS})
 
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+
 add_library(${PROJECT_NAME} SHARED ${HEADERS} ${SOURCES})
 target_link_libraries(${PROJECT_NAME}  ${ImageMagick_LIBRARIES} Boost::filesystem)

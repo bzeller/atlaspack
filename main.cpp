@@ -116,7 +116,7 @@ static std::vector<AtlasPack::Image> collectImageFiles (AtlasPack::Backend *back
         }
 
     } catch (const fs::filesystem_error& ex) {
-      std::cerr << "Error while reading the input directory: "<<ex.what() << std::endl;
+        std::cerr << "Error while reading the input directory: "<<ex.what() << std::endl;
     }
 
     return result;
@@ -129,32 +129,28 @@ static bool parseCommandline (int argc, char *argv[], po::variables_map &vm) {
     //Initialize the boost commandline parser with possible options
     po::options_description desc("General");
     desc.add_options()
-        ("help,h", "Show this help message.")
-        ("mode,m", po::value<std::string>()->required(), "Mode of operation, can be pack or extract");
+            ("help,h", "Show this help message.");
 
     //split the arguments in pack and extract groups so the help is easier to read
     po::options_description descPack("pack");
     descPack.add_options()
-            ("atlasBaseName,b",  po::value<std::string>(), "Path and basename where the texture atlas should be placed")
             ("recursive,r", "Search also subdirectories for images");
-
-    po::options_description descUnpack("extract");
-    descUnpack.add_options()
-            ("output,o",  po::value<std::string>(), "Path where the extracted image should be placed");
 
     //the following options will not be shown in help, this is required for positional arguments
     po::options_description hiddenOptions("Hidden");
     hiddenOptions.add_options()
-        ("input-or-output-file", po::value<std::string>(), "");
+            ("input-or-output-file", po::value<std::string>(), "")
+            ("atlasBaseName",  po::value<std::string>(), "Path and basename where the texture atlas should be placed");
 
     // Declare an options description instance which will include
     // all the options
     po::options_description allOptions("Allowed options");
-    allOptions.add(desc).add(descPack).add(descUnpack).add(hiddenOptions);
+    allOptions.add(desc).add(descPack).add(hiddenOptions);
 
     //the positional argument either represents the directory we want to pack or the filename we want to extract from the atlas
     po::positional_options_description posArgs;
     posArgs.add("input-or-output-file", 1);
+    posArgs.add("atlasBaseName", 1);
 
 
     //generate a help message
@@ -162,13 +158,10 @@ static bool parseCommandline (int argc, char *argv[], po::variables_map &vm) {
     // Declare an options description instance which will only include arguments
     // we want to be visible
     po::options_description visibleOptions("Usage:\n"
-                                           "  atlasbuilder --mode=pack [options] input_directory\n"
-                                           "  atlasbuilder --mode=extract [options] filename_to_extract\n\n"
-                                           "The atlasbuilder has two different modes, one for packing a directory\n"
-                                           "and one for extracting a file from a texture atlas:\n"
-                                           "\nBuild atlas:\n  atlasbuilder --mode=pack -b /tmp/MyAtlas /tmp/directory_with_files\n"
-                                           "\nExtract from atlas:\n  atlasbuilder --mode=extract -o /tmp/output.jpg /tmp/atlas.json\n\n");
-    visibleOptions.add(desc).add(descPack).add(descUnpack);
+                                           "  atlasbuilder [options] input_directory [output_filename]\n\n"
+                                           "Example:"
+                                           "\n  atlasbuilder /tmp/directory_with_files /tmp/MyAtlas\n");
+    visibleOptions.add(desc).add(descPack);
     std::stringstream helpStr;
     helpStr << visibleOptions;
     helpText() = helpStr.str();
@@ -210,144 +203,142 @@ int main(int argc, char *argv[])
     //from plugins
     AtlasPack::Backends::MagickBackend backend;
 
-    if (vm["mode"].as<std::string>() == "pack") {
+    if (vm.count("input-or-output-file") != 1) {
+        std::cerr << "Input directory was not specified."<<std::endl;
+        showHelp();
+        return 1;
+    }
 
-        if (vm.count("input-or-output-file") != 1) {
-            std::cerr << "Input directory was not specified."<<std::endl;
-            showHelp();
+    //if no name is given the atlas is stored into the current working directory, and named output
+    fs::path outputFileName;
+    if (vm.count("atlasBaseName") == 0) {
+        outputFileName = fs::current_path().append("output");
+    } else {
+        outputFileName = vm["atlasBaseName"].as<std::string>();
+    }
+
+    std::vector<AtlasPack::Image> images;
+    fs::path readDir(vm["input-or-output-file"].as<std::string>());
+    try {
+        if (!fs::exists(readDir)) {
+            std::cerr << "Input directory does not exist."<<std::endl;
             return 1;
         }
 
-        std::vector<AtlasPack::Image> images;
+        if (!fs::is_directory(readDir)) {
+            std::cerr << "Input path is not a directory."<<std::endl;
+            return 1;
+        }
+        std::cout << "Starting to collect files"<<std::endl;
+        images = collectImageFiles(&backend, readDir, vm.count("recursive") > 0);
+        std::cout << "Collected "<<images.size()<<" files."<<std::endl;
 
-        fs::path readDir(vm["input-or-output-file"].as<std::string>());
-        try {
-            if (!fs::exists(readDir)) {
-                std::cerr << "Input directory does not exist."<<std::endl;
-                return 1;
+    } catch (const fs::filesystem_error& ex) {
+        std::cerr << "Error while reading the input directory: "<<ex.what() << std::endl;
+        return 1;
+    }
+
+    if (images.size() > 0) {
+
+        AtlasPack::JobQueue<std::shared_ptr<AtlasPack::TextureAtlasPacker> > jobQueue;
+
+        auto packer = [](const AtlasPack::Size &s, const std::vector<AtlasPack::Image> &images) {
+            std::shared_ptr<AtlasPack::TextureAtlasPacker> result = std::make_shared<AtlasPack::TextureAtlasPacker>(s);
+            for (const auto &img : images) {
+                if (!result->insertImage(img)) {
+                    return std::shared_ptr<AtlasPack::TextureAtlasPacker>();
+                }
+            }
+            return result;
+        };
+
+
+        unsigned int cores = jobQueue.maxJobs();
+
+        //first find a atlas that fits all, incremement by 1000
+        size_t lastSize = 1000;
+        size_t increment = 100;
+
+        std::cout<<"Using "<<cores<<" cores to calculate Atlas"<<std::endl;
+
+        std::shared_ptr<AtlasPack::TextureAtlasPacker> lastPossibleAtlas;
+
+        while (!lastPossibleAtlas) {
+
+            std::vector<std::future<std::shared_ptr<AtlasPack::TextureAtlasPacker> > > taskResults;
+
+            for (unsigned int i = 0; i < cores; i++) {
+                auto fun = std::bind(packer, AtlasPack::Size(lastSize, lastSize), images);
+                taskResults.push_back(jobQueue.addTask(fun));
+                lastSize += increment;
             }
 
-            if (!fs::is_directory(readDir)) {
-                std::cerr << "Input path is not a directory."<<std::endl;
-                return 1;
-            }
-            std::cout << "Starting to collect files"<<std::endl;
-            images = collectImageFiles(&backend, readDir, vm.count("recursive") > 0);
-            std::cout << "Collected "<<images.size()<<" files."<<std::endl;
+            //wait until all tasks are finished
+            jobQueue.waitForAllRunningTasks();
 
-        } catch (const fs::filesystem_error& ex) {
-          std::cerr << "Error while reading the input directory: "<<ex.what() << std::endl;
-          return 1;
+            //now find a Atlas that fits all images
+            for (auto &currJob : taskResults ) {
+                //if we get a Atlas we found one that fits
+                lastPossibleAtlas = currJob.get();
+                if (lastPossibleAtlas)
+                    break;
+            }
         }
 
-        if (images.size() > 0) {
+        if (lastPossibleAtlas) {
+            std::cout<<"Found a atlas that can contain all: "<<lastPossibleAtlas->size().height<<std::endl;
+            std::cout<<"Trying to shrink Atlas size"<<std::endl;
 
-            AtlasPack::JobQueue<std::shared_ptr<AtlasPack::TextureAtlasPacker> > jobQueue;
-
-            auto packer = [](const AtlasPack::Size &s, const std::vector<AtlasPack::Image> &images) {
-                std::shared_ptr<AtlasPack::TextureAtlasPacker> result = std::make_shared<AtlasPack::TextureAtlasPacker>(s);
-                for (const auto &img : images) {
-                    if (!result->insertImage(img)) {
-                        return std::shared_ptr<AtlasPack::TextureAtlasPacker>();
-                    }
-                }
-                return result;
-            };
-
-
-            unsigned int cores = jobQueue.maxJobs();
-
-            //first find a atlas that fits all, incremement by 1000
-            size_t lastSize = 1000;
-            size_t increment = 100;
-
-            std::cout<<"Using "<<cores<<" cores to calculate Atlas"<<std::endl;
-
-            std::shared_ptr<AtlasPack::TextureAtlasPacker> lastPossibleAtlas;
-
-            while (!lastPossibleAtlas) {
+            bool canGoOn = true;
+            size_t decrement = 1;
+            lastSize  = lastPossibleAtlas->size().height;
+            while (canGoOn) {
 
                 std::vector<std::future<std::shared_ptr<AtlasPack::TextureAtlasPacker> > > taskResults;
 
                 for (unsigned int i = 0; i < cores; i++) {
-                    auto fun = std::bind(packer, AtlasPack::Size(lastSize, lastSize), images);
+
+                    //make sure we do not overflow
+                    if(decrement > lastSize)
+                        break;
+
+                    AtlasPack::Size mySize = AtlasPack::Size(lastSize - decrement, lastSize - decrement);
+
+                    auto fun = std::bind(packer, mySize, images);
                     taskResults.push_back(jobQueue.addTask(fun));
-                    lastSize += increment;
+
+                    lastSize -= decrement;
                 }
 
-                //wait until all tasks are finished
+                //wait for all tasks to be finished
                 jobQueue.waitForAllRunningTasks();
 
-                //now find a Atlas that fits all images
                 for (auto &currJob : taskResults ) {
-                    //if we get a Atlas we found one that fits
-                    lastPossibleAtlas = currJob.get();
-                    if (lastPossibleAtlas)
+                    auto result = currJob.get();
+                    if (result)
+                        lastPossibleAtlas = result;
+                    else {
+                        //tell the loop we found a Atlas
+                        canGoOn = false;
                         break;
+                    }
                 }
             }
 
-            if (lastPossibleAtlas) {
-                std::cout<<"Found a atlas that can contain all: "<<lastPossibleAtlas->size().height<<std::endl;
-                std::cout<<"Trying to shrink Atlas size"<<std::endl;
+            std::cout<<"Final Atlas size: "<<lastPossibleAtlas->size().height<<std::endl;
+            std::cout<<"Compiling Atlas, this can take a lot of time ....."<<std::endl;
 
-                bool canGoOn = true;
-                size_t decrement = 1;
-                lastSize  = lastPossibleAtlas->size().height;
-                while (canGoOn) {
+            std::string err;
+            AtlasPack::TextureAtlas atlas = lastPossibleAtlas->compile(outputFileName.string(), &backend, &err);
 
-                    std::vector<std::future<std::shared_ptr<AtlasPack::TextureAtlasPacker> > > taskResults;
-
-                    for (unsigned int i = 0; i < cores; i++) {
-
-                        //make sure we do not overflow
-                        if(decrement > lastSize)
-                            break;
-
-                        AtlasPack::Size mySize = AtlasPack::Size(lastSize - decrement, lastSize - decrement);
-
-                        auto fun = std::bind(packer, mySize, images);
-                        taskResults.push_back(jobQueue.addTask(fun));
-
-                        lastSize -= decrement;
-                    }
-
-                    //wait for all tasks to be finished
-                    jobQueue.waitForAllRunningTasks();
-
-                    for (auto &currJob : taskResults ) {
-                        auto result = currJob.get();
-                        if (result)
-                            lastPossibleAtlas = result;
-                        else {
-                            //tell the loop we found a Atlas
-                            canGoOn = false;
-                            break;
-                        }
-                    }
-                }
-
-                std::cout<<"Final Atlas size: "<<lastPossibleAtlas->size().height<<std::endl;
-                std::cout<<"Compiling Atlas ....."<<std::endl;
-
-                std::string err;
-                AtlasPack::TextureAtlas atlas = lastPossibleAtlas->compile(vm["atlasBaseName"].as<std::string>(), &backend, &err);
-
-                if(atlas.isValid()) {
-                    std::cout<<"Created a Atlas with "<<atlas.count()<<" Images from a List of "<<images.size()<<" Images."<<std::endl;
-                    return 0;
-                } else {
-                    std::cout<<"Failed to create Atlas, error was: "<<err<<std::endl;
-                    return 1;
-                }
+            if(atlas.isValid()) {
+                std::cout<<"Created a Atlas with "<<atlas.count()<<" Images from a List of "<<images.size()<<" Images."<<std::endl;
+                return 0;
+            } else {
+                std::cout<<"Failed to create Atlas, error was: "<<err<<std::endl;
+                return 1;
             }
         }
-    } else if (vm["mode"].as<std::string>() == "extract") {
-        std::cout << "Do extract";
-    } else {
-        std::cout << "Error: Unknown mode used, only pack and extract are supported.\n\n";
-        showHelp();
-        return 1;
     }
 
 
