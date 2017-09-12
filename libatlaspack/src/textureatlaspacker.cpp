@@ -306,9 +306,13 @@ TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *b
 
     } catch (const fs::filesystem_error& ex) {
         std::cerr << "Filesystem error while compiling the texture atlas: "<<ex.what() << std::endl;
-    } catch (...) {
-        std::cerr << "Catched an unknown exception when compiling the texture atlas."<< std::endl;
+	}
+	catch (const std::exception &ex) {
+        std::cerr << "Catched an exception when compiling the texture atlas."<<ex.what()<< std::endl;
     }
+	catch (...) {
+		std::cerr << "Catched an unknown exception when compiling the texture atlas." << std::endl;
+	}
 
     return TextureAtlas();
 }
