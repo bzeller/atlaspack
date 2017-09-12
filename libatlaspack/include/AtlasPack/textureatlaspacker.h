@@ -25,6 +25,7 @@
 #ifndef ATLASPACK_TEXTUREATLASPACKER_H_INCLUDED
 #define ATLASPACK_TEXTUREATLASPACKER_H_INCLUDED
 
+#include <AtlasPack/atlaspack_global.h>
 #include <AtlasPack/Image>
 #include <AtlasPack/Backend>
 #include <AtlasPack/Dimension>
@@ -33,7 +34,7 @@
 namespace AtlasPack {
 
 class TextureAtlasPackerPrivate;
-class TextureAtlasPacker
+class ATLASPACK_EXPORT TextureAtlasPacker
 {
     public:
         TextureAtlasPacker(Size atlasSize);

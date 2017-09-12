@@ -24,6 +24,7 @@
 #ifndef ATLASPACK_BACKEND_INCLUDED
 #define ATLASPACK_BACKEND_INCLUDED
 
+#include <AtlasPack/atlaspack_global.h>
 #include <AtlasPack/PaintDevice>
 #include <AtlasPack/Image>
 #include <AtlasPack/Dimension>
@@ -33,7 +34,7 @@
 
 namespace AtlasPack {
 
-class Backend {
+class ATLASPACK_EXPORT Backend {
     public:
         virtual ~Backend();
         virtual bool supportsImageType (const std::string &extension) const = 0;

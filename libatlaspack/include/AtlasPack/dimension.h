@@ -24,25 +24,26 @@
 #ifndef ATLASPACK_DIMENSION_INCLUDED
 #define ATLASPACK_DIMENSION_INCLUDED
 
+#include <AtlasPack/atlaspack_global.h>
 #include <stddef.h>
 
 namespace AtlasPack {
 
-struct Size {
+struct ATLASPACK_EXPORT Size {
     Size (size_t w = 0, size_t h = 0)
         : width(w), height(h) {}
     size_t width  = 0;
     size_t height = 0;
 };
 
-struct Pos {
+struct ATLASPACK_EXPORT Pos {
     Pos (size_t _x = 0, size_t _y = 0)
         :x(_x), y(_y) {}
     size_t x = 0;
     size_t y = 0;
 };
 
-struct Rect {
+struct ATLASPACK_EXPORT Rect {
     Rect (Pos pos = Pos(), Size s = Size())
         : topLeft(pos), size(s) {}
     Pos  topLeft;

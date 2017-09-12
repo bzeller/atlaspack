@@ -263,8 +263,11 @@ TextureAtlas TextureAtlasPacker::compile(const std::string &basePath, Backend *b
         //create atlas description text file
         std::ofstream descFile(descFileName.string(), std::ios::trunc | std::ios::out);
         if(!descFile.is_open()) {
-            if (error)
-                *error = "Could not create atlas index file";
+            if (error) {
+                std::stringstream s;
+                s << "Could not create atlas index file "<<descFileName.string()<<" "<<strerror(errno);
+                *error = s.str();
+            }
             return TextureAtlas();
         }
 
