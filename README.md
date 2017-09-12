@@ -21,6 +21,9 @@ Possible known issues are:
   of the input images gaps may be visible
 - The implementation to extract a image from the texture atlas is missing
 - Plugin loading could be implemented to make the use of Backends more flexible
+- In case the application exits with a "No space left on device error", the output image was too big, so the ImageMagick backend
+  rejected to create it. This behaviour could be changed by implementing a different backend that supports the creation of extremely
+  large files.
 
 Using the tool
 --------------------------
@@ -99,7 +102,3 @@ Dependencies:
 After the last step there should be atlaspack.sln created in the build-vs directory that can be opened and built inside
 Visual Studio 2015. Please make ABSOLUTELY sure to use the release build configuration otherwise binary incompatibilities
 would cause problems in the application.
-
-In case the application exits with a "No space left on device error", the output image was too big, so the ImageMagick backend
-rejected to create it. This behaviour could be changed by implementing a different backend that supports the creation of extremely
-large files.
