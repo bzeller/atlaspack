@@ -268,6 +268,7 @@ int main(int argc, char *argv[])
             std::vector<std::future<std::shared_ptr<AtlasPack::TextureAtlasPacker> > > taskResults;
 
             for (unsigned int i = 0; i < cores; i++) {
+                //use std::bind to pass arguments to the job
                 auto fun = std::bind(packer, AtlasPack::Size(lastSize, lastSize), images);
                 taskResults.push_back(jobQueue.addTask(fun));
                 lastSize += increment;

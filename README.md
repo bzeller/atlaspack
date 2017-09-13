@@ -10,6 +10,11 @@ backend. By implementing the Backend and PaintDevice interfaces it is possible t
 switch those out. One example Backend is provided which is using ImageMagick++ to implement
 the image processing.
 
+The implementation makes use of the lightmap packing algorithm that can be found at http://blackpawn.com/texts/lightmaps/default.html
+but in addition automatically calculates the texture size by first starting with a texture size of 1000x1000 and
+increasing that by 100x100 until it finds a matching rectangle. Then it will shrink the area size by 1x1 pixel until the
+area can not take in all pictures anymore.
+
 In order to speed up image processing and creation of the image, libatlaspack is using
 concurrent tasks, the JobQueue is a reuseable template class that can run any callable inside
 a seperate thread, returning the result as a std::future.
